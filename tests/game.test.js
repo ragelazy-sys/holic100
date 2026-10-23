@@ -61,9 +61,9 @@ test('Double forces numeric first and keeps actor for a second arbitrary play',(
   game.play(0);assert.equal(game.current,1);assert.equal(game.doubleFirst,false);assert.equal(game.remainingPlays,1);
   game.play(1);assert.equal(game.direction,-1);assert.equal(game.current,0);assertConservation(game);
 });
-test('Double with no numeric cards immediately eliminates the target',()=>{
+test('Double with neither number nor minus immediately eliminates the target',()=>{
   const game=g();setCard(game,0,0,'double');
-  for(const [i,t] of ['reverse','minus','holic','change2'].entries())setCard(game,1,i,t);
+  for(const [i,t] of ['reverse','change4','holic','change2'].entries())setCard(game,1,i,t);
   game.play(0);assert.equal(game.players[1].alive,false);assert.equal(game.current,2);
   assertConservation(game);
 });
@@ -181,4 +181,55 @@ test('Change 4 refills played slot before complete ordered exchange',()=>{
   assert.throws(()=>game.chooseTarget(0));game.chooseTarget(2);
   assert.deepEqual(game.players[0].slots.map(s=>s.card.id),target);
   assert.deepEqual(game.players[2].slots.map(s=>s.card.id),actor);assertConservation(game);
+});
+
+test('Double first accepts −10 and keeps the second play',()=>{
+  const game=g();setCard(game,0,0,'double');
+  for(const [i,t] of ['minus','reverse','holic','change2'].entries())setCard(game,1,i,t);
+  game.value=95;game.play(0);
+  assert.equal(game.players[1].alive,true);
+  assert.equal(game.doubleFirst,true);
+  assert.equal(game.isLegalSlot(0),true);
+  assert.equal(game.isLegalSlot(1),false);
+  const choice=game.cpuSlot();
+  assert.equal(game.players[1].slots[choice].card.type,'minus');
+  game.play(0);
+  assert.equal(game.value,85);assert.equal(game.remainingPlays,1);
+  assert.equal(game.current,1);assertConservation(game);
+});
+test('Double first eliminates player without either number or minus cards',()=>{
+  const game=g();setCard(game,0,0,'double');
+  for(const [i,t] of ['reverse','holic','change2','change4'].entries())setCard(game,1,i,t);
+  game.play(0);assert.equal(game.players[1].alive,false);assertConservation(game);
+});
+test('CPU uses −10 to survive a Double when all numbers would bust',()=>{
+  const game=g();setCard(game,0,0,'double');
+  setCard(game,1,0,'number',9);setCard(game,1,1,'minus');
+  game.value=96;game.play(0);
+  assert.equal(game.cpuSlot(),1);
+  game.play(1);assert.equal(game.players[1].alive,true);assert.equal(game.value,86);
+  assertConservation(game);
+});
+
+test('Double CPU chooses largest safe number before minus',()=>{
+  const game=g();game.current=1;game.doubleFirst=true;game.remainingPlays=2;game.value=94;
+  setCard(game,1,0,'number',5);setCard(game,1,1,'minus');
+  setCard(game,1,2,'number',3);setCard(game,1,3,'number',6);
+  assert.equal(game.cpuSlot(),0);assertConservation(game);
+});
+test('Double CPU chooses smallest number for unavoidable bust without minus',()=>{
+  const game=g();game.current=1;game.doubleFirst=true;game.remainingPlays=2;game.value=99;
+  setCard(game,1,0,'number',9);setCard(game,1,1,'reverse');
+  setCard(game,1,2,'number',2);setCard(game,1,3,'holic');
+  assert.equal(game.cpuSlot(),2);assert.equal(game.play(2).stage,'burst');
+  assert.equal(game.players[1].alive,false);assertConservation(game);
+});
+test('Double minus refills its exact slot and allows any special on second play',()=>{
+  const game=g();setCard(game,0,0,'double');
+  for(const [i,t] of ['reverse','holic','minus','change4'].entries())setCard(game,1,i,t);
+  game.play(0);const before=game.players[1].slots.map(s=>s.card.id),drawn=game.deck.at(-1).id;
+  assert.equal(game.play(0).ok,false);assert.equal(game.play(1).ok,false);assert.equal(game.play(3).ok,false);
+  game.play(2);assert.deepEqual(game.players[1].slots.map(s=>s.card.id),before.map((id,i)=>i===2?drawn:id));
+  assert.equal(game.doubleFirst,false);assert.equal(game.isLegalSlot(3),true);
+  game.play(3);game.chooseTarget(0);assertConservation(game);
 });
