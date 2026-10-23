@@ -38,9 +38,18 @@
  </main>
  <dialog id="rules"><div class="dialog-content"><div class="dialog-head"><h2>Holic100 ルール</h2><button id="close-rules" class="secondary">閉じる</button></div>
  <p><strong>場の合計が100以上になったカードを出した本人がバースト</strong>します。生き残った最後の1人が勝者です。</p>
- <dl><dt>数字札 1〜10</dt><dd>合計に加算します（各4枚）。</dd><dt>−10</dt><dd>合計から10を引きます（下限0）。</dd><dt>Reverse</dt><dd>進行方向を逆転します。</dd><dt>Holic100</dt><dd>合計を100にし、<strong>出した本人が即バースト</strong>します（例外なし）。</dd><dt>Double</dt><dd>次の人は2枚連続でプレイ。1枚目は数字札のみ。数字札が無ければ即バースト。1枚目の後は同じスロットへ補充されます。</dd><dt>Change 2</dt><dd>出したスロットに1枚補充→相手を選択→自分の2枚を指定→相手の元の手札からランダム2枚と交換。</dd><dt>Change 4</dt><dd>出したスロットに1枚補充→相手を選択→4枚すべて交換。</dd></dl>
+ <dl><dt>数字札 1〜10</dt><dd>合計に加算します（各4枚）。</dd><dt>−10</dt><dd>合計から10を引きます（下限0）。</dd><dt>Reverse</dt><dd>進行方向を逆転します。</dd><dt>Holic100</dt><dd>合計を100にし、<strong>出した本人が即バースト</strong>します（例外なし）。</dd><dt>Double</dt><dd>次の人は2枚連続でプレイ。1枚目は数字札（1〜10）または−10のみ。どちらも無ければ即バースト。1枚目の後は同じスロットへ補充されます。</dd><dt>Change 2</dt><dd>出したスロットに1枚補充→相手を選択→自分の2枚を指定→相手の元の手札からランダム2枚と交換。</dd><dt>Change 4</dt><dd>出したスロットに1枚補充→相手を選択→4枚すべて交換。</dd></dl>
  <p>カードは常にスロット0〜3の固定位置で管理。CPUのカードの入れ替わりを観察すると推理に役立ちます。</p>
  <p class="fineprint">補足：脱落者の未使用手札は除外。山札が空になったときは場の一番上以外のカードを混ぜ直します。</p></div></dialog>
+ <dialog id="incoming-change" aria-labelledby="incoming-change-title" aria-describedby="incoming-change-description">
+  <div class="dialog-content incoming-change-content">
+   <span class="change-alert-badge">手札交換のお知らせ</span>
+   <h2 id="incoming-change-title">Changeが届きました</h2>
+   <p id="incoming-change-description"></p>
+   <p class="fineprint">確認するまであなたの手札は交換されません。</p>
+   <button id="incoming-change-accept" class="primary" type="button">確認して交換する</button>
+  </div>
+ </dialog>
  <script type="module" src="./app.js"></script>
 </body>
 </html>
