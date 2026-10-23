@@ -40,7 +40,7 @@ const assert=require('node:assert/strict');
   });
   await page.reload();
   await page.locator('#human-bust').waitFor({state:'visible'});
-  assert.ok((await page.locator('#human-bust-reason').innerText()).includes('脱落'));
+  assert.ok((await page.locator('#human-bust-reason').innerText()).includes('バースト'));
   assert.ok((await page.locator('#instruction').innerText()).includes('脱落'));
   await page.locator('#human-bust-continue').click();
   await page.locator('#human-bust').waitFor({state:'hidden'});
