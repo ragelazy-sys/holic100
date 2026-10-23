@@ -2,6 +2,7 @@
 export const TOTAL_CARDS = 58;
 export const TYPES = Object.freeze({MINUS:'minus', REVERSE:'reverse', HOLIC:'holic', CHANGE2:'change2', CHANGE4:'change4', DOUBLE:'double'});
 export const CARD_LABEL = card => !card ? '' : card.type === 'number' ? String(card.value) : ({minus:'−10',reverse:'Reverse',holic:'Holic100',change2:'Change 2',change4:'Change 4',double:'Double'}[card.type]);
+export const isDoubleFirstEligible = card => card?.type === 'number' || card?.type === 'minus';
 export function createDeck(){
   const cards=[];
   let id=0;
@@ -41,7 +42,7 @@ export class HolicGame {
   }
   isLegalSlot(slot){
     const p=this.players[this.current];
-    return this.phase==='play'&&p?.alive&&Number.isInteger(slot)&&slot>=0&&slot<4&&p.slots[slot]?.card&&(this.doubleFirst ? p.slots[slot].card.type==='number' : true);
+    return this.phase==='play'&&p?.alive&&Number.isInteger(slot)&&slot>=0&&slot<4&&p.slots[slot]?.card&&(this.doubleFirst ? isDoubleFirstEligible(p.slots[slot].card) : true);
   }
   nextAlive(from=this.current){
     for(let i=0;i<4;i++){const k=(from+(i+1)*this.direction+16)%4;if(this.players[k].alive)return k;}
@@ -133,16 +134,21 @@ export class HolicGame {
   beginTurn(){
     if(this.phase==='over')return;
     const p=this.players[this.current];
-    this.emit('turn',`${p.name}のターン${this.doubleFirst?'（Double：1枚目は数字札のみ）':''}`,{player:this.current});
-    if(this.doubleFirst&&!p.slots.some(s=>s?.card.type==='number')){
-      this.bust(this.current,'Doubleの1枚目に出せる数字札がありません。');
+    this.emit('turn',`${p.name}のターン${this.doubleFirst?'（Double：1枚目は数字札または−10）':''}`,{player:this.current});
+    if(this.doubleFirst&&!p.slots.some(s=>isDoubleFirstEligible(s?.card))){
+      this.bust(this.current,'Doubleの1枚目に出せる数字札または−10がありません。');
     }
   }
   stagnantScore(playerId){const p=this.players[playerId];return p.slots.reduce((total,s)=>total+(s?Math.min(30,this.tick-s.stamp):0),0);}
   cpuSlot(){
     const p=this.players[this.current];const cards=p.slots.map((s,i)=>({slot:i,card:s?.card})).filter(x=>x.card);
-    if(this.doubleFirst){const nums=cards.filter(x=>x.card.type==='number');if(!nums.length)return null;
-      const safe=nums.filter(x=>this.value+x.card.value<100);return safe.length?this.maxNumber(safe).slot:this.minNumber(nums).slot;
+    if(this.doubleFirst){
+      const nums=cards.filter(x=>x.card.type==='number');
+      const safe=nums.filter(x=>this.value+x.card.value<100);
+      if(safe.length)return this.maxNumber(safe).slot;
+      const minus=cards.find(x=>x.card.type==='minus');
+      if(minus)return minus.slot; // Prefer guaranteed survival over a busting number.
+      return nums.length?this.minNumber(nums).slot:null;
     }
     const nums=cards.filter(x=>x.card.type==='number');
     if(this.value<=75&&nums.length)return this.maxNumber(nums).slot;
