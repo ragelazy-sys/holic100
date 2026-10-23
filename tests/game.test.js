@@ -39,7 +39,8 @@ test('playing slot 2 replenishes slot 2 without reordering others',()=>{
 test('B rule: Holic100 always bursts its owner, including from zero',()=>{
   const game=g();setCard(game,0,1,'holic');const res=game.play(1);
   assert.equal(res.stage,'burst');assert.equal(game.value,100);
-  assert.equal(game.players[0].alive,false);assert.equal(game.current,1);
+  assert.equal(game.players[0].alive,false);
+  assert.equal(game.current,game.players.find(p=>p.alive).id);
   assertConservation(game);
 });
 test('99+1 bursts; 98+1 stays alive; score 100 cannot be survived by number cards',()=>{
@@ -143,6 +144,7 @@ test('every fixed slot refills in place without sorting for human and CPUs',()=>
 });
 test('B rule bursts immediately above 100 without drawing or a second Double play',()=>{
   const game=g();setCard(game,0,0,'double');setCard(game,1,2,'number',10);
+  setCard(game,1,1,'minus'); // other safe card exists, so unsafe manual choice remains possible
   game.value=95;game.play(0);const deckSize=game.deck.length;
   assert.equal(game.play(2).stage,'burst');assert.equal(game.value,105);
   assert.equal(game.deck.length,deckSize);assert.equal(game.players[1].alive,false);
