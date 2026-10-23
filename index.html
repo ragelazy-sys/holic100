@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+  <meta name="theme-color" content="#142235">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Holic100">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+  <title>Holic100 — Psychological Card Game</title>
+</head>
+<body>
+ <main class="app">
+  <header class="bar">
+    <div class="brand"><span class="brand-mark">H<span>100</span></span><div><strong>HOLIC100</strong><small>心理戦カードゲーム</small></div></div>
+    <div class="bar-right"><span id="deck-info">山札 42</span><button id="help" class="secondary" aria-label="ルールを表示">ルール</button><button id="reset" class="secondary">新規ゲーム</button></div>
+  </header>
+  <section class="table-area">
+    <div id="cpu2" class="cpu seat cpu-top"></div>
+    <div id="cpu1" class="cpu seat cpu-left"></div>
+    <div class="felt">
+      <div class="center-status"><span class="eyebrow">TABLE TOTAL</span><div id="score" class="score">0</div><span class="limit">100以上でバースト</span></div>
+      <div class="piles"><div class="pile" id="top-card"><span>START</span></div><div class="pile pile-deck"><span>H</span><small>DECK</small></div></div>
+      <div id="direction" class="direction">↻ 時計回り</div>
+    </div>
+    <div id="cpu3" class="cpu seat cpu-right"></div>
+  </section>
+  <section class="human-area">
+    <div class="human-head"><div><span class="human-dot"></span><strong>あなた</strong><span id="human-state" class="pill">プレイ中</span></div><p id="instruction">カードを選択してください</p></div>
+    <div class="play-row"><div id="human-hand" class="human-hand"></div><aside class="play-controls"><div id="selection-label">カードを選択</div><button id="action" class="primary" disabled>カードを出す</button><button id="cancel" class="secondary small" hidden>選択解除</button></aside></div>
+    <div id="status" class="status" role="status" aria-live="polite">ゲーム開始</div>
+  </section>
+  <section class="history-box"><div class="history-heading">対戦ログ</div><div id="history" class="history"></div></section>
+ </main>
+ <dialog id="rules"><div class="dialog-content"><div class="dialog-head"><h2>Holic100 ルール</h2><button id="close-rules" class="secondary">閉じる</button></div>
+ <p><strong>場の合計が100以上になったカードを出した本人がバースト</strong>します。生き残った最後の1人が勝者です。</p>
+ <dl><dt>数字札 1〜10</dt><dd>合計に加算します（各4枚）。</dd><dt>−10</dt><dd>合計から10を引きます（下限0）。</dd><dt>Reverse</dt><dd>進行方向を逆転します。</dd><dt>Holic100</dt><dd>合計を100にし、<strong>出した本人が即バースト</strong>します（例外なし）。</dd><dt>Double</dt><dd>次の人は2枚連続でプレイ。1枚目は数字札のみ。数字札が無ければ即バースト。1枚目の後は同じスロットへ補充されます。</dd><dt>Change 2</dt><dd>出したスロットに1枚補充→相手を選択→自分の2枚を指定→相手の元の手札からランダム2枚と交換。</dd><dt>Change 4</dt><dd>出したスロットに1枚補充→相手を選択→4枚すべて交換。</dd></dl>
+ <p>カードは常にスロット0〜3の固定位置で管理。CPUのカードの入れ替わりを観察すると推理に役立ちます。</p>
+ <p class="fineprint">補足：脱落者の未使用手札は除外。山札が空になったときは場の一番上以外のカードを混ぜ直します。</p></div></dialog>
+ <script type="module" src="./app.js"></script>
+</body>
+</html>
