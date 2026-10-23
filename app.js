@@ -6,6 +6,23 @@ try{const saved=localStorage.getItem(storageKey);game=new HolicGame({autoload:sa
 catch{game=new HolicGame();}
 let selected=null, gifts=new Set(), busy=false, moving=null, lastUpdated=null, swapHighlight=null, session=0;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function showIncomingChange(actor,type){
+  const modal=$('incoming-change');
+  $('incoming-change-title').textContent=`${game.players[actor].name}から${type==='change2'?'Change 2':'Change 4'}！`;
+  $('incoming-change-description').textContent=type==='change2'
+    ? 'あなたが指名されました。あなたの元の手札4枚からランダムに2枚が選ばれ、相手の2枚と交換されます。'
+    : 'あなたが指名されました。あなたと相手の手札4枚すべてを交換します。';
+  return new Promise(resolve=>{
+    const acknowledge=$('incoming-change-accept');
+    acknowledge.addEventListener('click',()=>{
+      modal.close();
+      resolve();
+    },{once:true});
+    modal.showModal();
+    acknowledge.focus();
+  });
+}
+$('incoming-change').addEventListener('cancel',e=>e.preventDefault());
 const safe=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 function save(){try{localStorage.setItem(storageKey,game.serialize());}catch{}}
 function cpuMarkup(id){
@@ -26,6 +43,7 @@ function humanCard(s,i){
   let cls=`hand-card ${cat}`;
   if(game.phase==='gift'&&gifts.has(i))cls+=' gift-selected';
   if(game.phase==='play'&&selected===i)cls+=' selected';
+  if(swapHighlight?.[0]?.includes(i))cls+=' just-swapped';
   return `<button type="button" class="${cls}" data-slot="${i}" ${!legal?'disabled':''} aria-label="スロット${i}、${safe(label)}"><span class="corner">${i}</span><span class="card-title ${word?'word':''}">${safe(label)}</span><span class="card-sub">${card.type==='number'?'NUMBER':card.type==='holic'?'SELF BUST':card.type==='minus'?'ESCAPE':card.type==='reverse'?'DIRECTION':card.type==='change2'||card.type==='change4'?'SWAP':'TWO PLAYS'}</span>${card.type==='holic'?'<span class="warning">出すと即脱落</span>':''}<span class="slot-no">SLOT ${i}</span></button>`;
 }
 function instruction(){
@@ -33,7 +51,7 @@ function instruction(){
   if(game.current!==0)return `${game.players[game.current].name}が考えています…`;
   if(game.phase==='target')return '交換するCPUをタップしてください';
   if(game.phase==='gift')return '相手に渡すカードを2枚選択してください';
-  if(game.doubleFirst)return 'Double：1枚目は必ず数字札';
+  if(game.doubleFirst)return 'Double：1枚目は数字札（1〜10）または−10';
   if(game.remainingPlays===1&&game.log[0]?.type==='double-next')return 'Double：2枚目は自由に選べます';
   return '出すカードを選択してください';
 }
@@ -101,10 +119,16 @@ async function driveCpu(){
   while(mySession===session&&game.phase!=='over'&&game.current!==0){
     const id=game.current;
     if(game.phase==='target'){
-      await delay(440);if(mySession!==session)return;const target=game.cpuTarget();const result=game.chooseTarget(target);if(result.stage==='complete')swapHighlight={[id]:[0,1,2,3],[target]:[0,1,2,3]};save();render();if(result.stage==='complete'){await delay(600);if(mySession!==session)return;swapHighlight=null;}continue;
+      await delay(440);if(mySession!==session)return;
+      const target=game.cpuTarget();
+      if(target===0){
+        await showIncomingChange(id,game.pendingChange.type);
+        if(mySession!==session)return;
+      }
+      const result=game.chooseTarget(target);if(result.stage==='complete')swapHighlight={[id]:[0,1,2,3],[target]:[0,1,2,3]};save();render();if(result.stage==='complete'){await delay(1100);if(mySession!==session)return;swapHighlight=null;}continue;
     }
     if(game.phase==='gift'){
-      await delay(420);if(mySession!==session)return;const target=game.pendingChange.target;const gifted=game.cpuGift();const result=game.chooseGift(gifted);swapHighlight={[id]:gifted,[target]:result.targetSlots};save();render();await delay(600);if(mySession!==session)return;swapHighlight=null;continue;
+      await delay(420);if(mySession!==session)return;const target=game.pendingChange.target;const gifted=game.cpuGift();const result=game.chooseGift(gifted);swapHighlight={[id]:gifted,[target]:result.targetSlots};save();render();await delay(1100);if(mySession!==session)return;swapHighlight=null;continue;
     }
     const slot=game.cpuSlot();
     if(slot===null){game.bust(id,'出せるカードがありません。');save();render();continue;}
