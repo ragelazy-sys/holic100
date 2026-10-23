@@ -23,9 +23,10 @@ export class HolicGame {
     this.players=Array.from({length:4},(_,id)=>({id,name:id===0?'あなた':`CPU ${id}`,alive:true,slots:[null,null,null,null]}));
     this.value=0;this.direction=1;this.current=0;this.phase='play';this.pendingChange=null;
     this.pendingDouble=false;this.remainingPlays=1;this.doubleFirst=false;
-    this.tick=0;this.winner=null;this.events=[];this.log=[];
+    this.tick=0;this.winner=null;this.events=[];this.log=[];this.humanBustAcknowledged=false;
     for(let slot=0;slot<4;slot++)for(let player=0;player<4;player++)this.drawInto(player,slot);
     this.emit('start','ゲーム開始。あなたのターンです。');
+    this.beginTurn();
   }
   emit(type,message,extra={}){const event={type,message, ...extra}; this.events.push(event);this.log.unshift(event);this.log=this.log.slice(0,75);return event;}
   drawCard(){
@@ -44,6 +45,27 @@ export class HolicGame {
     const p=this.players[this.current];
     return this.phase==='play'&&p?.alive&&Number.isInteger(slot)&&slot>=0&&slot<4&&p.slots[slot]?.card&&(this.doubleFirst ? isDoubleFirstEligible(p.slots[slot].card) : true);
   }
+  // Is a card allowed this play, and would it leave the table below 100?
+  isSafeCard(card){
+    if(!card)return false;
+    if(this.doubleFirst&&!isDoubleFirstEligible(card))return false;
+    const total=card.type==='number'?this.value+card.value
+      :card.type==='minus'?Math.max(0,this.value-10)
+      :card.type==='holic'?100:this.value;
+    return total<100;
+  }
+  hasSafePlay(playerId=this.current){
+    if(this.phase!=='play'||!this.players[playerId]?.alive)return false;
+    return this.players[playerId].slots.some(slot=>this.isSafeCard(slot?.card));
+  }
+  resolveNoSafePlay(){
+    if(this.phase!=='play'||!this.players[this.current]?.alive||this.hasSafePlay())return false;
+    const reason=this.doubleFirst
+      ? 'Doubleの1枚目に、合計100未満を保てる数字札または−10がありません。'
+      : '合計を100未満に保てるカードがありません。';
+    this.bust(this.current,reason);
+    return true;
+  }
   nextAlive(from=this.current){
     for(let i=0;i<4;i++){const k=(from+(i+1)*this.direction+16)%4;if(this.players[k].alive)return k;}
     return null;
@@ -58,6 +80,7 @@ export class HolicGame {
   }
   play(slot){
     if(!this.isLegalSlot(slot))return {ok:false,reason:'そのカードは現在出せません。'};
+    if(this.resolveNoSafePlay())return {ok:true,stage:'burst-no-safe',card:null};
     const actor=this.current;const p=this.players[actor];const card=p.slots[slot].card;
     p.slots[slot]=null;this.discard.push(card);this.tick++;
     this.changeScore(card);
@@ -123,6 +146,7 @@ export class HolicGame {
     if(this.remainingPlays>1){
       this.remainingPlays--;this.doubleFirst=false;
       this.emit('double-next',`${this.players[this.current].name}：Doubleの2枚目です。`,{player:this.current});
+      this.resolveNoSafePlay();
       return;
     }
     this.remainingPlays=1;this.doubleFirst=false;
@@ -135,24 +159,22 @@ export class HolicGame {
     if(this.phase==='over')return;
     const p=this.players[this.current];
     this.emit('turn',`${p.name}のターン${this.doubleFirst?'（Double：1枚目は数字札または−10）':''}`,{player:this.current});
-    if(this.doubleFirst&&!p.slots.some(s=>isDoubleFirstEligible(s?.card))){
-      this.bust(this.current,'Doubleの1枚目に出せる数字札または−10がありません。');
-    }
+    this.resolveNoSafePlay();
   }
   stagnantScore(playerId){const p=this.players[playerId];return p.slots.reduce((total,s)=>total+(s?Math.min(30,this.tick-s.stamp):0),0);}
   cpuSlot(){
-    const p=this.players[this.current];const cards=p.slots.map((s,i)=>({slot:i,card:s?.card})).filter(x=>x.card);
+    const p=this.players[this.current];
+    if(!p?.alive)return null;
+    // Never force an unsafe card: an unavoidable loss is handled before drawing a card.
+    const cards=p.slots.map((s,i)=>({slot:i,card:s?.card})).filter(x=>this.isSafeCard(x.card));
     if(this.doubleFirst){
       const nums=cards.filter(x=>x.card.type==='number');
-      const safe=nums.filter(x=>this.value+x.card.value<100);
-      if(safe.length)return this.maxNumber(safe).slot;
-      const minus=cards.find(x=>x.card.type==='minus');
-      if(minus)return minus.slot; // Prefer guaranteed survival over a busting number.
-      return nums.length?this.minNumber(nums).slot:null;
+      if(nums.length)return this.maxNumber(nums).slot;
+      return cards.find(x=>x.card.type==='minus')?.slot??null;
     }
     const nums=cards.filter(x=>x.card.type==='number');
     if(this.value<=75&&nums.length)return this.maxNumber(nums).slot;
-    if(this.value>=76){const safe=nums.filter(x=>this.value+x.card.value<100);if(safe.length)return this.maxNumber(safe).slot;}
+    if(this.value>=76&&nums.length)return this.maxNumber(nums).slot;
     const specials=cards.filter(x=>x.card.type!=='number');
     // Holic100 is never an attack under B: it is an immediate self-bust.
     const next=this.nextAlive();const suspicious=next!==null&&this.stagnantScore(next)>=12;
@@ -160,8 +182,8 @@ export class HolicGame {
       ?(suspicious?['minus','double','reverse','change4','change2']:['minus','reverse','change4','change2','double'])
       :['reverse','minus','change2','change4','double'];
     for(const type of priorities){const item=specials.find(x=>x.card.type===type);if(item)return item.slot;}
-    if(nums.length)return this.minNumber(nums).slot; // unavoidable numerical bust
-    return specials.find(x=>x.card.type==='holic')?.slot??null;
+    // No safe card: beginTurn/finishPlay eliminates the player without discarding.
+    return null;
   }
   maxNumber(items){return [...items].sort((a,b)=>b.card.value-a.card.value||a.slot-b.slot)[0];}
   minNumber(items){return [...items].sort((a,b)=>a.card.value-b.card.value||a.slot-b.slot)[0];}
@@ -180,13 +202,16 @@ export class HolicGame {
     return {count:all.length,unique:new Set(all.map(c=>c.id)).size};
   }
   serialize(){
-    const {deck,discard,removed,players,value,direction,current,phase,pendingChange,pendingDouble,remainingPlays,doubleFirst,tick,winner,log}=this;
-    return JSON.stringify({version:1,deck,discard,removed,players,value,direction,current,phase,pendingChange,pendingDouble,remainingPlays,doubleFirst,tick,winner,log});
+    const {deck,discard,removed,players,value,direction,current,phase,pendingChange,pendingDouble,remainingPlays,doubleFirst,tick,winner,log,humanBustAcknowledged}=this;
+    return JSON.stringify({version:1,deck,discard,removed,players,value,direction,current,phase,pendingChange,pendingDouble,remainingPlays,doubleFirst,tick,winner,log,humanBustAcknowledged});
   }
   load(json){
     const state=typeof json==='string'?JSON.parse(json):json;
     if(state.version!==1||!Array.isArray(state.players)||state.players.length!==4||!Array.isArray(state.deck))throw Error('保存データが不正です。');
     Object.assign(this,state);this.events=[];
+    this.humanBustAcknowledged=state.humanBustAcknowledged===true;
     if(this.checkCards().count!==TOTAL_CARDS||this.checkCards().unique!==TOTAL_CARDS)throw Error('保存データのカード枚数が不正です。');
+    // Normalize an older save whose active player cannot make a safe play.
+    this.resolveNoSafePlay();
   }
 }
