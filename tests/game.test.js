@@ -210,3 +210,26 @@ test('CPU uses −10 to survive a Double when all numbers would bust',()=>{
   game.play(1);assert.equal(game.players[1].alive,true);assert.equal(game.value,86);
   assertConservation(game);
 });
+
+test('Double CPU chooses largest safe number before minus',()=>{
+  const game=g();game.current=1;game.doubleFirst=true;game.remainingPlays=2;game.value=94;
+  setCard(game,1,0,'number',5);setCard(game,1,1,'minus');
+  setCard(game,1,2,'number',3);setCard(game,1,3,'number',6);
+  assert.equal(game.cpuSlot(),0);assertConservation(game);
+});
+test('Double CPU chooses smallest number for unavoidable bust without minus',()=>{
+  const game=g();game.current=1;game.doubleFirst=true;game.remainingPlays=2;game.value=99;
+  setCard(game,1,0,'number',9);setCard(game,1,1,'reverse');
+  setCard(game,1,2,'number',2);setCard(game,1,3,'holic');
+  assert.equal(game.cpuSlot(),2);assert.equal(game.play(2).stage,'burst');
+  assert.equal(game.players[1].alive,false);assertConservation(game);
+});
+test('Double minus refills its exact slot and allows any special on second play',()=>{
+  const game=g();setCard(game,0,0,'double');
+  for(const [i,t] of ['reverse','holic','minus','change4'].entries())setCard(game,1,i,t);
+  game.play(0);const before=game.players[1].slots.map(s=>s.card.id),drawn=game.deck.at(-1).id;
+  assert.equal(game.play(0).ok,false);assert.equal(game.play(1).ok,false);assert.equal(game.play(3).ok,false);
+  game.play(2);assert.deepEqual(game.players[1].slots.map(s=>s.card.id),before.map((id,i)=>i===2?drawn:id));
+  assert.equal(game.doubleFirst,false);assert.equal(game.isLegalSlot(3),true);
+  game.play(3);game.chooseTarget(0);assertConservation(game);
+});
