@@ -61,9 +61,9 @@ test('Double forces numeric first and keeps actor for a second arbitrary play',(
   game.play(0);assert.equal(game.current,1);assert.equal(game.doubleFirst,false);assert.equal(game.remainingPlays,1);
   game.play(1);assert.equal(game.direction,-1);assert.equal(game.current,0);assertConservation(game);
 });
-test('Double with no numeric cards immediately eliminates the target',()=>{
+test('Double with neither number nor minus immediately eliminates the target',()=>{
   const game=g();setCard(game,0,0,'double');
-  for(const [i,t] of ['reverse','minus','holic','change2'].entries())setCard(game,1,i,t);
+  for(const [i,t] of ['reverse','change4','holic','change2'].entries())setCard(game,1,i,t);
   game.play(0);assert.equal(game.players[1].alive,false);assert.equal(game.current,2);
   assertConservation(game);
 });
