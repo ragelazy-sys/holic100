@@ -217,11 +217,15 @@ test('Double CPU chooses largest safe number before minus',()=>{
   setCard(game,1,2,'number',3);setCard(game,1,3,'number',6);
   assert.equal(game.cpuSlot(),0);assertConservation(game);
 });
-test('Double CPU chooses smallest number for unavoidable bust without minus',()=>{
+test('Double player with no safe 1st play is eliminated before discarding',()=>{
   const game=g();game.current=1;game.doubleFirst=true;game.remainingPlays=2;game.value=99;
   setCard(game,1,0,'number',9);setCard(game,1,1,'reverse');
   setCard(game,1,2,'number',2);setCard(game,1,3,'holic');
-  assert.equal(game.cpuSlot(),2);assert.equal(game.play(2).stage,'burst');
+  const beforeDiscard=game.discard.length, beforeValue=game.value;
+  assert.equal(game.cpuSlot(),null);
+  assert.equal(game.resolveNoSafePlay(),true);
+  assert.equal(game.discard.length,beforeDiscard);
+  assert.equal(game.value,beforeValue);
   assert.equal(game.players[1].alive,false);assertConservation(game);
 });
 test('Double minus refills its exact slot and allows any special on second play',()=>{
@@ -232,4 +236,77 @@ test('Double minus refills its exact slot and allows any special on second play'
   game.play(2);assert.deepEqual(game.players[1].slots.map(s=>s.card.id),before.map((id,i)=>i===2?drawn:id));
   assert.equal(game.doubleFirst,false);assert.equal(game.isLegalSlot(3),true);
   game.play(3);game.chooseTarget(0);assertConservation(game);
+});
+
+test('no safe cards at start of turn automatically eliminates CPU with no discard',()=>{
+  const game=g();
+  setCard(game,0,0,'number',1);
+  for(const [i,[type,value]] of [['number',8],['number',9],['number',10],['holic',undefined]].entries())
+    setCard(game,1,i,type,value);
+  game.value=98;
+  const prevDiscard=game.discard.length;
+  const result=game.play(0);
+  assert.equal(result.ok,true);
+  assert.equal(game.value,99);
+  assert.equal(game.players[1].alive,false);
+  assert.equal(game.current,2);
+  assert.equal(game.discard.length,prevDiscard+1); // CPU has not played a card.
+  assert.equal(game.players[1].slots.filter(Boolean).length,0);
+  assertConservation(game);
+});
+test('a safe special card prevents automatic bust despite unsafe number cards',()=>{
+  const game=g();
+  game.value=99;
+  for(const [i,[type,value]] of [['number',10],['holic',undefined],['reverse',undefined],['number',7]].entries())
+    setCard(game,0,i,type,value);
+  assert.equal(game.hasSafePlay(),true);
+  assert.equal(game.resolveNoSafePlay(),false);
+  assert.equal(game.players[0].alive,true);
+  assert.equal(game.cpuSlot(),2); // Reverse is the safe move even at 99.
+  assertConservation(game);
+});
+test('human is eliminated before playing when no safe card is available',()=>{
+  const game=g();
+  game.value=99;
+  for(const [i,[type,value]] of [['number',10],['number',8],['number',9],['holic',undefined]].entries())
+    setCard(game,0,i,type,value);
+  const before=game.discard.length;
+  assert.equal(game.resolveNoSafePlay(),true);
+  assert.equal(game.players[0].alive,false);
+  assert.equal(game.current,1);
+  assert.equal(game.discard.length,before);
+  assert.equal(game.value,99);
+  assert.equal(game.humanBustAcknowledged,false);
+  assertConservation(game);
+});
+test('Double second card auto-busts if a safe first card leaves none',()=>{
+  const game=g();
+  game.current=0;game.doubleFirst=true;game.remainingPlays=2;game.value=98;
+  setCard(game,0,0,'number',1);
+  setCard(game,0,1,'number',8);
+  setCard(game,0,2,'number',9);
+  setCard(game,0,3,'holic');
+  // Swap a known unsafe Holic100 into the next draw position.
+  const holoIndex=game.deck.findIndex(c=>c.type==='holic');
+  assert.ok(holoIndex>=0);
+  const last=game.deck.length-1;
+  [game.deck[holoIndex],game.deck[last]]=[game.deck[last],game.deck[holoIndex]];
+  const before=game.discard.length;
+  const result=game.play(0);
+  assert.equal(result.ok,true);
+  assert.equal(game.value,99);
+  assert.equal(game.players[0].alive,false);
+  assert.equal(game.discard.length,before+1); // only first card was placed
+  assert.equal(game.remainingPlays,1);
+  assertConservation(game);
+});
+test('bust acknowledgment is persisted for continued spectator play',()=>{
+  const game=g();
+  game.bust(0,'自動脱落テスト');
+  game.humanBustAcknowledged=true;
+  const loaded=new HolicGame({rng,autoload:game.serialize()});
+  assert.equal(loaded.players[0].alive,false);
+  assert.equal(loaded.humanBustAcknowledged,true);
+  assert.equal(loaded.phase==='over'||loaded.current!==0,true);
+  assertConservation(loaded);
 });
