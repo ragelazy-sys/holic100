@@ -22,7 +22,31 @@ const assert=require('node:assert/strict');
   await page.reload();await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
   await context.setOffline(true);await page.reload();await page.locator('#human-hand button').last().waitFor();
   assert.equal(await page.locator('#human-hand button').count(),4);assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({viewport:`${width}x${height}`,layout,offline:'passed',errors}));await context.close();
+  // Reproduce a human auto-elimination and verify spectator dialog before CPU resumes.
+  await context.setOffline(false);
+  await page.evaluate(async()=>{
+    const {HolicGame}=await import('./game.js');
+    const game=new HolicGame({rng:()=>0.37});
+    // At 99, swap the human's only safe Reverse with an unsafe high number.
+    const slot=game.players[0].slots.findIndex(s=>s.card.type==='reverse');
+    const index=game.deck.findIndex(c=>c.type==='number'&&c.value>1);
+    if(slot<0||index<0)throw Error('Failed to seed bust scenario');
+    const original=game.players[0].slots[slot].card;
+    game.players[0].slots[slot].card=game.deck[index];
+    game.deck[index]=original;
+    game.value=99;game.resolveNoSafePlay();
+    if(game.players[0].alive)throw Error('Human should auto-bust');
+    localStorage.setItem('holic100-save-v1',game.serialize());
+  });
+  await page.reload();
+  await page.locator('#human-bust').waitFor({state:'visible'});
+  assert.ok((await page.locator('#human-bust-reason').innerText()).includes('バースト'));
+  assert.ok((await page.locator('#instruction').innerText()).includes('脱落'));
+  await page.locator('#human-bust-continue').click();
+  await page.locator('#human-bust').waitFor({state:'hidden'});
+  assert.ok((await page.locator('#instruction').innerText()).includes('観戦'));
+  assert.deepEqual(errors,[]);
+  console.log(JSON.stringify({viewport:`${width}x${height}`,layout,offline:'passed',humanBustDialog:'passed',errors}));await context.close();
  }
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

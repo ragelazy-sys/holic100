@@ -8,3 +8,10 @@
 .change-alert-badge{display:inline-block;border:1px solid #edbf71;border-radius:999px;background:#493a25;color:#ffe5a4;padding:6px 14px;font-size:12px;font-weight:800}
 .hand-card.just-swapped{animation:hand-swapped .9s ease-out;border-color:#5ee3a9;box-shadow:0 0 0 3px #5ee3a955,0 7px 14px #050c15a6}
 @keyframes hand-swapped{0%{transform:translateY(-17px) scale(.92);opacity:.5}65%{transform:translateY(4px) scale(1.05)}100%{transform:translateY(0) scale(1);opacity:1}}
+
+/* Player elimination notice */
+.bust-content{max-width:480px;text-align:center}
+.bust-content h2{color:#ffadbb;font-size:clamp(21px,3vw,29px);margin:15px 0 8px}
+.bust-content p{margin:12px 0 18px}
+.bust-content .primary{min-height:48px;min-width:220px}
+.bust-alert-badge{display:inline-block;border:1px solid #ee7d95;background:#4b2639;border-radius:999px;color:#ffd7df;font-size:12px;font-weight:800;padding:7px 15px}

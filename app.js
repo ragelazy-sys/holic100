@@ -5,6 +5,7 @@ let game;
 try{const saved=localStorage.getItem(storageKey);game=new HolicGame({autoload:saved||null});}
 catch{game=new HolicGame();}
 let selected=null, gifts=new Set(), busy=false, moving=null, lastUpdated=null, swapHighlight=null, session=0;
+let humanBustPromise=null;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function showIncomingChange(actor,type){
   const modal=$('incoming-change');
@@ -25,6 +26,28 @@ function showIncomingChange(actor,type){
 $('incoming-change').addEventListener('cancel',e=>e.preventDefault());
 const safe=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 function save(){try{localStorage.setItem(storageKey,game.serialize());}catch{}}
+function notifyHumanBust(){
+  if(game.players[0].alive||game.humanBustAcknowledged)return Promise.resolve();
+  if(humanBustPromise)return humanBustPromise;
+  const modal=$('human-bust');
+  const event=game.log.find(e=>e.type==='bust'&&e.player===0);
+  $('human-bust-reason').textContent=event?.message??'出せる安全なカードがありません。';
+  $('human-bust-continue').textContent=game.phase==='over'?'結果を見る':'CPU同士の対戦を観戦する';
+  humanBustPromise=new Promise(resolve=>{
+    $('human-bust-continue').addEventListener('click',()=>{
+      modal.close();
+      game.humanBustAcknowledged=true;
+      humanBustPromise=null;
+      save();
+      render();
+      resolve();
+    },{once:true});
+    modal.showModal();
+    $('human-bust-continue').focus();
+  });
+  return humanBustPromise;
+}
+$('human-bust').addEventListener('cancel',e=>e.preventDefault());
 function cpuMarkup(id){
   const p=game.players[id],active=p.alive&&game.current===id&&game.phase!=='over';
   const targetable=game.current===0&&game.phase==='target'&&p.alive;
@@ -47,6 +70,7 @@ function humanCard(s,i){
   return `<button type="button" class="${cls}" data-slot="${i}" ${!legal?'disabled':''} aria-label="スロット${i}、${safe(label)}"><span class="corner">${i}</span><span class="card-title ${word?'word':''}">${safe(label)}</span><span class="card-sub">${card.type==='number'?'NUMBER':card.type==='holic'?'SELF BUST':card.type==='minus'?'ESCAPE':card.type==='reverse'?'DIRECTION':card.type==='change2'||card.type==='change4'?'SWAP':'TWO PLAYS'}</span>${card.type==='holic'?'<span class="warning">出すと即脱落</span>':''}<span class="slot-no">SLOT ${i}</span></button>`;
 }
 function instruction(){
+  if(!game.players[0].alive)return game.phase==='over'?'観戦終了':'あなたは脱落しました。CPU同士の対戦を観戦中';
   if(game.phase==='over')return game.winner===0?'あなたの勝利！':'ゲーム終了';
   if(game.current!==0)return `${game.players[game.current].name}が考えています…`;
   if(game.phase==='target')return '交換するCPUをタップしてください';
@@ -69,7 +93,7 @@ function render(){
   }
   const human=game.players[0];
   $('human-hand').innerHTML=human.slots.map(humanCard).join('');
-  $('human-state').textContent=!human.alive?'脱落':game.phase==='over'?'対戦終了':game.current===0?'あなたのターン':'CPUのターン';
+  $('human-state').textContent=!human.alive?(game.phase==='over'?'観戦終了':'観戦中'):game.phase==='over'?'対戦終了':game.current===0?'あなたのターン':'CPUのターン';
   $('instruction').textContent=instruction();
   $('status').textContent=game.log[0]?.message??'';
   $('history').innerHTML=game.log.filter(x=>!['draw','turn'].includes(x.type)).slice(0,3).map(e=>`<div>${safe(e.message)}</div>`).join('');
@@ -82,7 +106,13 @@ function render(){
   $('selection-label').textContent=selected===null?'未選択':`SLOT ${selected}: ${CARD_LABEL(human.slots[selected]?.card)}`;
   btn.textContent='カードを出す';btn.disabled=selected===null;
 }
-function afterMove(){save();render();if(game.phase!=='over'&&game.current!==0)driveCpu();}
+async function afterMove(){
+  const mySession=session;
+  save();render();
+  await notifyHumanBust();
+  if(mySession!==session)return;
+  if(game.phase!=='over'&&game.current!==0)driveCpu();
+}
 $('human-hand').addEventListener('click',e=>{
   const btn=e.target.closest('[data-slot]');if(!btn||busy||game.current!==0||game.phase==='over')return;
   const i=Number(btn.dataset.slot);
@@ -108,7 +138,14 @@ $('action').addEventListener('click',()=>{
   game.play(playedSlot);afterMove();
 });
 $('cancel').addEventListener('click',()=>{gifts.clear();render();});
-function reset(){session++;busy=false;game=new HolicGame();selected=null;gifts=new Set();moving=null;lastUpdated=null;swapHighlight=null;save();render();}
+function reset(){
+  session++;busy=false;
+  if($('human-bust').open)$('human-bust').close();
+  if($('incoming-change').open)$('incoming-change').close();
+  humanBustPromise=null;
+  game=new HolicGame();selected=null;gifts=new Set();moving=null;lastUpdated=null;swapHighlight=null;
+  afterMove();
+}
 $('reset').addEventListener('click',()=>{if(confirm('現在の対戦を破棄して新しく始めますか？'))reset();});
 $('help').addEventListener('click',()=>$('rules').showModal());
 $('close-rules').addEventListener('click',()=>$('rules').close());
@@ -117,6 +154,8 @@ async function driveCpu(){
   if(busy||game.phase==='over'||game.current===0)return;
   const mySession=session;busy=true;render();
   while(mySession===session&&game.phase!=='over'&&game.current!==0){
+    await notifyHumanBust();
+    if(mySession!==session)return;
     const id=game.current;
     if(game.phase==='target'){
       await delay(440);if(mySession!==session)return;
@@ -131,16 +170,21 @@ async function driveCpu(){
       await delay(420);if(mySession!==session)return;const target=game.pendingChange.target;const gifted=game.cpuGift();const result=game.chooseGift(gifted);swapHighlight={[id]:gifted,[target]:result.targetSlots};save();render();await delay(1100);if(mySession!==session)return;swapHighlight=null;continue;
     }
     const slot=game.cpuSlot();
-    if(slot===null){game.bust(id,'出せるカードがありません。');save();render();continue;}
+    if(slot===null){
+      if(!game.resolveNoSafePlay())throw Error('CPUに安全なカードがあるのに選択できません。');
+      save();render();continue;
+    }
     await delay(440);if(mySession!==session)return;
     moving={player:id,slot};render();await delay(370);if(mySession!==session)return;
     moving=null;
     const result=game.play(slot);
     if(!result.ok)break;
     lastUpdated={player:id,slot};save();render();
+    await notifyHumanBust();
+    if(mySession!==session)return;
     await delay(550);if(mySession!==session)return;lastUpdated=null;render();
   }
   if(mySession===session){busy=false;save();render();}
 }
-render();if(game.current!==0&&game.phase!=='over')driveCpu();
+afterMove();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
