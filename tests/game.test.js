@@ -40,7 +40,7 @@ test('B rule: Holic100 always bursts its owner, including from zero',()=>{
   const game=g();setCard(game,0,1,'holic');const res=game.play(1);
   assert.equal(res.stage,'burst');assert.equal(game.value,100);
   assert.equal(game.players[0].alive,false);
-  assert.equal(game.current,game.players.find(p=>p.alive).id);
+  assert.equal(game.phase,'over');assert.equal(game.winner,3);
   assertConservation(game);
 });
 test('99+1 bursts; 98+1 stays alive; score 100 cannot be survived by number cards',()=>{
@@ -148,7 +148,8 @@ test('B rule bursts immediately above 100 without drawing or a second Double pla
   game.value=95;game.play(0);const deckSize=game.deck.length;
   assert.equal(game.play(2).stage,'burst');assert.equal(game.value,105);
   assert.equal(game.deck.length,deckSize);assert.equal(game.players[1].alive,false);
-  assert.equal(game.current,2);assert.equal(game.remainingPlays,1);assert.equal(game.doubleFirst,false);
+  assert.equal(game.phase,'over');assert.equal(game.winner,0);
+  assert.equal(game.remainingPlays,1);assert.equal(game.doubleFirst,false);
   assertConservation(game);
 });
 test('Double first draw refills its slot and second Double chains to the next player',()=>{
