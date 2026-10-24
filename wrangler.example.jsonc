@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "holic100",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-10-24",
+  "d1_databases": [{
+    "binding": "AUTH_DB",
+    "database_name": "holic100-auth",
+    "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+    "migrations_dir": "migrations"
+  }],
+  "env": {
+    "preview": {
+      "d1_databases": [{
+        "binding": "AUTH_DB",
+        "database_name": "holic100-auth-preview",
+        "database_id": "REPLACE_WITH_PREVIEW_D1_DATABASE_ID",
+        "migrations_dir": "migrations"
+      }]
+    }
+  }
+}
