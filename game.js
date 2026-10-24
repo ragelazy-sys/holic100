@@ -126,8 +126,9 @@ export class HolicGame {
   chooseTake(indices){
     if(this.phase!=='take'||this.pendingChange?.type!=='change2')
       throw Error('Change 2の相手札を選ぶ状態ではありません。');
-    if(!Array.isArray(indices))throw Error('相手のスロットを2つ選んでください。');
-    const targetSlots=[...new Set(indices)];
+    if(!Array.isArray(indices)||indices.length!==2||new Set(indices).size!==2)
+      throw Error('相手の異なる2つのスロットを選んでください。');
+    const targetSlots=[...indices];
     const {actor,target,giftIndices}=this.pendingChange;
     const a=this.players[actor],b=this.players[target];
     if(targetSlots.length!==2||targetSlots.some(i=>!Number.isInteger(i)||i<0||i>3||!b.slots[i]))
