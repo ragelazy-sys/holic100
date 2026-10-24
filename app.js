@@ -70,6 +70,7 @@ function humanCard(s,i){
   const legal=active&&(game.phase==='gift'||game.isLegalSlot(i));
   let cls=`hand-card ${cat}`;
   if(game.phase==='gift'&&gifts.has(i))cls+=' gift-selected';
+  if(game.phase==='take'&&game.pendingChange?.giftIndices?.includes(i))cls+=' gift-pending';
   if(game.phase==='play'&&selected===i)cls+=' selected';
   if(swapHighlight?.[0]?.includes(i))cls+=' just-swapped';
   return `<button type="button" class="${cls}" data-slot="${i}" ${!legal?'disabled':''} aria-label="スロット${i}、${safe(label)}"><span class="corner">${i}</span><span class="card-title ${word?'word':''}">${safe(label)}</span><span class="card-sub">${card.type==='number'?'NUMBER':card.type==='holic'?'SELF BUST':card.type==='minus'?'ESCAPE':card.type==='reverse'?'DIRECTION':card.type==='change2'||card.type==='change4'?'SWAP':'TWO PLAYS'}</span>${card.type==='holic'?'<span class="warning">出すと即脱落</span>':''}<span class="slot-no">SLOT ${i}</span></button>`;
