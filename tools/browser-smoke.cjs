@@ -22,6 +22,43 @@ const assert=require('node:assert/strict');
   await page.reload();await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
   await context.setOffline(true);await page.reload();await page.locator('#human-hand button').last().waitFor();
   assert.equal(await page.locator('#human-hand button').count(),4);assert.deepEqual(errors,[]);
+  // Change 2: human chooses two of their own cards, then two of CPU's hidden slots.
+  await context.setOffline(false);
+  await page.evaluate(async()=>{
+    const {HolicGame}=await import('./game.js');
+    const game=new HolicGame({rng:()=>0.37});
+    game.phase='target';game.current=0;
+    game.pendingChange={type:'change2',actor:0,target:null};
+    localStorage.setItem('holic100-save-v1',game.serialize());
+  });
+  await page.reload();
+  await page.locator('#cpu2').click();
+  assert.ok((await page.locator('#instruction').innerText()).includes('渡すカード'));
+  await page.locator('[data-slot="0"]').click();
+  await page.locator('[data-slot="3"]').click();
+  await page.locator('#action').click();
+  assert.ok((await page.locator('#instruction').innerText()).includes('裏向き4枚'));
+  assert.equal(await page.locator('#cpu2 [data-take-slot]').count(),4);
+  assert.equal(await page.locator('#cpu1 [data-take-slot]').count(),0);
+  // Target cards must remain face-down even in accessible labels and source markup.
+  const labels=await page.locator('#cpu2 [data-take-slot]').evaluateAll(els=>els.map(e=>e.getAttribute('aria-label')));
+  assert.ok(labels.every(label=>label.includes('裏向きスロット')));
+  const beforeTake=await page.evaluate(()=>JSON.parse(localStorage.getItem('holic100-save-v1')));
+  assert.equal(beforeTake.phase,'take');
+  await page.locator('#cpu2 [data-take-slot="1"]').click();
+  assert.equal(await page.locator('#action').isDisabled(),true);
+  await page.locator('#cpu2 [data-take-slot="3"]').click();
+  assert.equal(await page.locator('#action').isEnabled(),true);
+  // Picking face-down slots must not swap the hands until the confirm action.
+  const whileSelecting=await page.evaluate(()=>JSON.parse(localStorage.getItem('holic100-save-v1')));
+  assert.deepEqual(whileSelecting.players.map(p=>p.slots.map(s=>s?.card.id)),beforeTake.players.map(p=>p.slots.map(s=>s?.card.id)));
+  await page.locator('#action').click();
+  const afterTake=await page.evaluate(()=>JSON.parse(localStorage.getItem('holic100-save-v1')));
+  assert.equal(afterTake.players[0].slots[0].card.id,beforeTake.players[2].slots[1].card.id);
+  assert.equal(afterTake.players[0].slots[3].card.id,beforeTake.players[2].slots[3].card.id);
+  assert.equal(afterTake.players[2].slots[1].card.id,beforeTake.players[0].slots[0].card.id);
+  assert.equal(afterTake.players[2].slots[3].card.id,beforeTake.players[0].slots[3].card.id);
+  assert.deepEqual(errors,[]);
   // Reproduce a human auto-elimination and verify spectator dialog before CPU resumes.
   await context.setOffline(false);
   await page.evaluate(async()=>{
