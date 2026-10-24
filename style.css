@@ -15,3 +15,10 @@
 .bust-content p{margin:12px 0 18px}
 .bust-content .primary{min-height:48px;min-width:220px}
 .bust-alert-badge{display:inline-block;border:1px solid #ee7d95;background:#4b2639;border-radius:999px;color:#ffd7df;font-size:12px;font-weight:800;padding:7px 15px}
+
+/* Change 2: tactile, face-down blind-pick target slots on iPad */
+.seat.blind-target{border-color:#e6c47a;box-shadow:0 0 0 3px #e6c47a33}
+.cpu-back.blind-pick{padding:0;cursor:pointer;touch-action:manipulation;border-color:#eed096;box-shadow:inset 0 0 0 3px #233c5a,0 0 0 2px #e6c47a44;opacity:1;transition:transform .15s,border-color .15s,box-shadow .15s}
+.cpu-back.blind-pick:focus-visible{outline:3px solid #e6c47a;outline-offset:3px}
+.cpu-back.blind-pick.blind-selected{border-color:#5ee3a9;box-shadow:inset 0 0 0 3px #233c5a,0 0 0 3px #5ee3a9aa;transform:translateY(-7px)}
+.cpu-back.blind-pick.blind-selected::after{content:'✓';position:absolute;left:3px;top:1px;color:#5ee3a9;font-size:15px;font-weight:900;text-shadow:0 1px 2px #122}
