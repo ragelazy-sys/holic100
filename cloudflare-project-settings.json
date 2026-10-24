@@ -1,0 +1,6 @@
+{
+  "deployment_configs": {
+    "production": { "fail_open": false },
+    "preview": { "fail_open": false }
+  }
+}

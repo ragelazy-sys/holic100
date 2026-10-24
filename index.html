@@ -17,7 +17,7 @@
  <main class="app">
   <header class="bar">
     <div class="brand"><span class="brand-mark">H<span>100</span></span><div><strong>HOLIC100</strong><small>心理戦カードゲーム</small></div></div>
-    <div class="bar-right"><span id="deck-info">山札 42</span><button id="help" class="secondary" aria-label="ルールを表示">ルール</button><button id="reset" class="secondary">新規ゲーム</button></div>
+    <div class="bar-right"><form action="/logout" method="post"><button class="secondary" type="submit">ログアウト</button></form><span id="deck-info">山札 42</span><button id="help" class="secondary" aria-label="ルールを表示">ルール</button><button id="reset" class="secondary">新規ゲーム</button></div>
   </header>
   <section class="table-area">
     <div id="cpu2" class="cpu seat cpu-top"></div>
@@ -59,6 +59,7 @@
    <button id="human-bust-continue" type="button" class="primary">CPU同士の対戦を観戦する</button>
   </div>
  </dialog>
+ <script type="module" src="./auth-client.js"></script>
  <script type="module" src="./app.js"></script>
 </body>
 </html>
