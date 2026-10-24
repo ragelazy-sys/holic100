@@ -38,7 +38,7 @@
  </main>
  <dialog id="rules"><div class="dialog-content"><div class="dialog-head"><h2>Holic100 ルール</h2><button id="close-rules" class="secondary">閉じる</button></div>
  <p><strong>合計を100未満に保てるカードが1枚もない場合、そのプレイヤーは出札前に脱落</strong>します。安全なカードがある場合でも、危険なカードを自分で選んで100以上にすると即脱落します。生き残った最後の1人が勝者です。あなたが脱落した後もCPU同士の対戦は続きます。</p>
- <dl><dt>数字札 1〜10</dt><dd>合計に加算します（各4枚）。</dd><dt>−10</dt><dd>合計から10を引きます（下限0）。</dd><dt>Reverse</dt><dd>進行方向を逆転します。</dd><dt>Holic100</dt><dd>合計を100にし、<strong>出した本人が即バースト</strong>します（例外なし）。</dd><dt>Double</dt><dd>次の人は2枚連続でプレイ。1枚目は数字札（1〜10）または−10のみ。どちらも無い場合、または100未満に保てる許可札が無ければ出札前に脱落。1枚目の後は同じスロットへ補充されます。</dd><dt>Change 2</dt><dd>出したスロットに1枚補充→相手を選択→自分の2枚を指定→相手の元の手札からランダム2枚と交換。</dd><dt>Change 4</dt><dd>出したスロットに1枚補充→相手を選択→4枚すべて交換。</dd></dl>
+ <dl><dt>数字札 1〜10</dt><dd>合計に加算します（各4枚）。</dd><dt>−10</dt><dd>合計から10を引きます（下限0）。</dd><dt>Reverse</dt><dd>進行方向を逆転します。</dd><dt>Holic100</dt><dd>合計を100にし、<strong>出した本人が即バースト</strong>します（例外なし）。</dd><dt>Double</dt><dd>次の人は2枚連続でプレイ。1枚目は数字札（1〜10）または−10のみ。どちらも無い場合、または100未満に保てる許可札が無ければ出札前に脱落。1枚目の後は同じスロットへ補充されます。</dd><dt>Change 2</dt><dd>出したスロットに1枚補充→相手を選択→自分の2枚を指定→相手の裏向きの元の4枚から任意の2スロットを選択→交換。CPUは相手札の中身を見ずに2スロットを選びます。</dd><dt>Change 4</dt><dd>出したスロットに1枚補充→相手を選択→4枚すべて交換。</dd></dl>
  <p>カードは常にスロット0〜3の固定位置で管理。CPUのカードの入れ替わりを観察すると推理に役立ちます。</p>
  <p class="fineprint">補足：脱落者の未使用手札は除外。山札が空になったときは場の一番上以外のカードを混ぜ直します。</p></div></dialog>
  <dialog id="incoming-change" aria-labelledby="incoming-change-title" aria-describedby="incoming-change-description">
