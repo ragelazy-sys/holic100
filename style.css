@@ -22,3 +22,8 @@
 .cpu-back.blind-pick:focus-visible{outline:3px solid #e6c47a;outline-offset:3px}
 .cpu-back.blind-pick.blind-selected{border-color:#5ee3a9;box-shadow:inset 0 0 0 3px #233c5a,0 0 0 3px #5ee3a9aa;transform:translateY(-7px)}
 .cpu-back.blind-pick.blind-selected::after{content:'✓';position:absolute;left:3px;top:1px;color:#5ee3a9;font-size:15px;font-weight:900;text-shadow:0 1px 2px #122}
+
+/* Distinguish the committed outgoing cards while choosing opponent backs */
+.hand-card.gift-pending,.hand-card:disabled.gift-pending{border-color:#5ee3a9;filter:none;opacity:1;box-shadow:0 0 0 2px #5ee3a955,0 5px 0 #9aa6ae}
+.hand-card:disabled.just-swapped{filter:none;opacity:1}
+.cpu-top .cpu-back.blind-pick{width:44px;height:55px}
