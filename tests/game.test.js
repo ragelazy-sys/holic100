@@ -74,7 +74,11 @@ test('Change 2 selects two original target slots and preserves the other slots',
   game.chooseTarget(2);assert.equal(game.phase,'gift');
   const beforeA=game.players[0].slots.map(s=>s.card.id);
   const beforeB=game.players[2].slots.map(s=>s.card.id);
-  const res=game.chooseGift([1,3]);
+  const stage=game.chooseGift([1,3]);
+  assert.equal(stage.stage,'take');assert.equal(game.phase,'take');
+  assert.deepEqual(game.players[0].slots.map(s=>s.card.id),beforeA);
+  assert.deepEqual(game.players[2].slots.map(s=>s.card.id),beforeB);
+  const res=game.chooseTake([0,2]);
   assert.equal(game.phase,'play');assert.equal(game.current,1);
   assert.equal(game.players[0].slots[0].card.id,beforeA[0]);
   assert.equal(game.players[0].slots[2].card.id,beforeA[2]);
@@ -124,6 +128,7 @@ test('full CPU-only simulations conserve all 58 cards and eventually finish',()=
       assertConservation(game);const slot=game.cpuSlot();
       if(game.phase==='target')game.chooseTarget(game.cpuTarget());
       else if(game.phase==='gift')game.chooseGift(game.cpuGift());
+      else if(game.phase==='take')game.chooseTake(game.cpuTake());
       else if(slot!==null)game.play(slot);
       else game.bust(game.current,'出せるカードなし');
       steps++;
@@ -168,7 +173,12 @@ test('Change 2 samples distinct original target slots and leaves unselected slot
     game.play(2);assert.equal(game.players[0].slots[2].card.id,drawn);game.chooseTarget(3);
     const a=game.players[0].slots.map(s=>s.card.id),b=game.players[3].slots.map(s=>s.card.id);
     assert.throws(()=>game.chooseGift([1,1]));
-    const {targetSlots}=game.chooseGift([0,2]);assert.equal(new Set(targetSlots).size,2);
+    assert.equal(game.chooseGift([0,2]).stage,'take');
+    assert.deepEqual(game.players[0].slots.map(s=>s.card.id),a);
+    assert.deepEqual(game.players[3].slots.map(s=>s.card.id),b);
+    assert.throws(()=>game.chooseTake([1,1]));
+    assert.throws(()=>game.chooseTake([0,4]));
+    const {targetSlots}=game.chooseTake([1,3]);assert.equal(new Set(targetSlots).size,2);
     for(let i=0;i<4;i++)if(!targetSlots.includes(i))assert.equal(game.players[3].slots[i].card.id,b[i]);
     for(const [j,i] of targetSlots.entries()){
       assert.equal(game.players[0].slots[[0,2][j]].card.id,b[i]);
@@ -312,4 +322,51 @@ test('bust acknowledgment is persisted for continued spectator play',()=>{
   assert.equal(loaded.humanBustAcknowledged,true);
   assert.equal(loaded.phase==='over'||loaded.current!==0,true);
   assertConservation(loaded);
+});
+
+test('Change 2 blind pick never swaps before two target slots are confirmed',()=>{
+  const game=g();setCard(game,0,0,'change2');game.play(0);game.chooseTarget(1);
+  const handA=game.players[0].slots.map(s=>s.card.id),handB=game.players[1].slots.map(s=>s.card.id);
+  assert.equal(game.chooseGift([0,3]).stage,'take');
+  assert.equal(game.phase,'take');
+  assert.deepEqual(game.players[0].slots.map(s=>s.card.id),handA);
+  assert.deepEqual(game.players[1].slots.map(s=>s.card.id),handB);
+  assert.throws(()=>game.chooseTake([2]));
+  assert.throws(()=>game.chooseTake([2,2]));
+  assert.throws(()=>game.chooseTake([-1,1]));
+  assert.deepEqual(game.players[0].slots.map(s=>s.card.id),handA);
+  assert.deepEqual(game.players[1].slots.map(s=>s.card.id),handB);
+  const result=game.chooseTake([2,1]);
+  assert.deepEqual(result.targetSlots,[2,1]);
+  assert.equal(game.players[0].slots[0].card.id,handB[2]);
+  assert.equal(game.players[0].slots[3].card.id,handB[1]);
+  assert.equal(game.players[1].slots[2].card.id,handA[0]);
+  assert.equal(game.players[1].slots[1].card.id,handA[3]);
+  assertConservation(game);
+});
+test('Change 2 pending blind-pick stage survives save/load',()=>{
+  const game=g();setCard(game,0,0,'change2');game.play(0);game.chooseTarget(3);
+  game.chooseGift([1,2]);
+  const a=game.players[0].slots.map(s=>s.card.id),b=game.players[3].slots.map(s=>s.card.id);
+  const restored=new HolicGame({rng,autoload:game.serialize()});
+  assert.equal(restored.phase,'take');
+  assert.deepEqual(restored.pendingChange.giftIndices,[1,2]);
+  assert.deepEqual(restored.players[0].slots.map(s=>s.card.id),a);
+  restored.chooseTake([0,3]);
+  assert.equal(restored.players[0].slots[1].card.id,b[0]);
+  assert.equal(restored.players[0].slots[2].card.id,b[3]);
+  assertConservation(restored);
+});
+test('CPU blind take selects distinct slots without inspecting card faces',()=>{
+  const game=g();setCard(game,0,0,'change2');game.play(0);game.chooseTarget(2);game.chooseGift([0,2]);
+  // Draw from the target's four *positions*, regardless of card identities.
+  const first=game.cpuTake();
+  assert.equal(first.length,2);
+  assert.equal(new Set(first).size,2);
+  assert.ok(first.every(i=>i>=0&&i<=3));
+  const before=game.players[2].slots.map(s=>s.card.id);
+  game.chooseTake(first);
+  assertConservation(game);
+  assert.equal(game.players[0].slots[0].card.id,before[first[0]]);
+  assert.equal(game.players[0].slots[2].card.id,before[first[1]]);
 });
