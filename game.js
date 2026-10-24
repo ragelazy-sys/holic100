@@ -116,17 +116,44 @@ export class HolicGame {
     const pair=[...new Set(indices)];
     if(pair.length!==2||pair.some(x=>!Number.isInteger(x)||x<0||x>3||!this.players[this.pendingChange.actor].slots[x]))throw Error('異なる2つのスロットを選んでください。');
     const {actor,target}=this.pendingChange;
+    this.pendingChange.giftIndices=pair;
+    this.phase='take';
+    this.emit('choose-take',`${this.players[actor].name}：${this.players[target].name}の裏向き手札から2枚選びます。`,{actor,target});
+    return {stage:'take'};
+  }
+  // The actor specifies exactly which TWO face-down slots to take. The card
+  // contents of the target player are never exposed to the selector.
+  chooseTake(indices){
+    if(this.phase!=='take'||this.pendingChange?.type!=='change2')
+      throw Error('Change 2の相手札を選ぶ状態ではありません。');
+    if(!Array.isArray(indices))throw Error('相手のスロットを2つ選んでください。');
+    const targetSlots=[...new Set(indices)];
+    const {actor,target,giftIndices}=this.pendingChange;
     const a=this.players[actor],b=this.players[target];
-    const targetSlots=this.shuffle([0,1,2,3]).slice(0,2);
-    // Target's original four slots are sampled before the gifted cards arrive.
+    if(targetSlots.length!==2||targetSlots.some(i=>!Number.isInteger(i)||i<0||i>3||!b.slots[i]))
+      throw Error('相手の異なる2つのスロットを選んでください。');
+    if(!Array.isArray(giftIndices)||giftIndices.length!==2)
+      throw Error('自分の交換する2枚が未確定です。');
+    // Swap only after BOTH players' positions have been selected. Cards never
+    // shift or sort: only selected slots change, and all 58 IDs are preserved.
     for(let j=0;j<2;j++){
-      const ai=pair[j],bi=targetSlots[j];
+      const ai=giftIndices[j],bi=targetSlots[j];
       [a.slots[ai],b.slots[bi]]=[b.slots[bi],a.slots[ai]];
       if(a.slots[ai])a.slots[ai].stamp=this.tick;
       if(b.slots[bi])b.slots[bi].stamp=this.tick;
     }
-    this.emit('swap',`${a.name}と${b.name}が各2枚を交換（${a.name}のスロット${pair.join('・')}）`,{actor,target,slots:pair,targetSlots});
-    this.pendingChange=null;this.phase='play';this.finishPlay();return {stage:'complete',targetSlots};
+    this.emit('swap',`${a.name}と${b.name}が各2枚を交換（${a.name}のスロット${giftIndices.join('・')}）`,
+      {actor,target,slots:giftIndices,targetSlots});
+    this.pendingChange=null;this.phase='play';this.finishPlay();
+    return {stage:'complete',targetSlots,giftIndices};
+  }
+  cpuTake(){
+    if(this.phase!=='take'||this.pendingChange?.type!=='change2')
+      throw Error('Change 2の相手札を選ぶ状態ではありません。');
+    // Uniform random draw from currently occupied face-down slots. Do not
+    // examine opponents' card faces or choose based on private information.
+    return this.shuffle(this.players[this.pendingChange.target].slots
+      .map((slot,i)=>slot?i:null).filter(i=>i!==null)).slice(0,2);
   }
   bust(playerId,reason){
     const p=this.players[playerId];if(!p.alive)return;
